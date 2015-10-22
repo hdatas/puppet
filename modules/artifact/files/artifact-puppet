@@ -1,0 +1,39 @@
+#!/bin/bash
+if [ "$#" -ne  "3" ]
+then
+    echo "Usage: artifact-puppet LOCAL_FILE REMOTE_FILE_URL SWAP_FILE"
+    exit 2;
+else
+
+    LOCAL=$1
+    REMOTE=$2
+    SWAP=$3
+    
+    if [ ! -f $LOCAL ]; then touch $LOCAL; fi
+    if [ ! -f $SWAP ]; then touch $SWAP; fi
+    
+    export LOCAL_SIZE=$(ls -l $LOCAL |awk '{print $5}'|dos2unix)
+    export REMOTE_SIZE=$(curl -sI $REMOTE|grep Length|awk '{print $2}'|dos2unix)
+    export SWAP_SIZE=$(ls -l $SWAP|awk '{print $5}'|dos2unix)
+    
+    if [ "$LOCAL_SIZE" == "$REMOTE_SIZE" ]; 
+    then 
+        echo "No Update Needed"
+        exit 3;
+    else 
+        if [ "$SWAP_SIZE" == "$REMOTE_SIZE" ];
+        then
+            echo "Update Ready in $SWAP"
+        else
+            curl -so $SWAP $REMOTE
+            export SWAP_SIZE=$(ls -l $SWAP|awk '{print $5}'|dos2unix)
+            if [ "$SWAP_SIZE" == "$REMOTE_SIZE" ];
+            then
+                echo "Update Ready in $SWAP"
+            else
+                echo "There was a problem with the download from $REMOTE to $SWAP so puppet will not update $LOCAL"
+                exit 1;
+            fi
+        fi
+    fi    
+fi
